@@ -1,5 +1,5 @@
 # Logs
-logs
+server/logs
 *.log
 npm-debug.log*
 yarn-debug.log*
@@ -38,7 +38,8 @@ bower_components
 build/Release
 
 # Dependency directories
-node_modules/
+client/node_modules/
+server/node_modules/
 jspm_packages/
 
 # TypeScript v1 declaration files
@@ -69,8 +70,8 @@ typings/
 .yarn-integrity
 
 # dotenv environment variables file
-.env
-.env.test
+server/.env
+server/.env.test
 
 # parcel-bundler cache (https://parceljs.org/)
 .cache
@@ -80,7 +81,8 @@ typings/
 
 # Nuxt.js build / generate output
 .nuxt
-dist
+server/dist
+server/lib
 
 # Gatsby files
 .cache/

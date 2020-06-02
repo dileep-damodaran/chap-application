@@ -1,0 +1,15 @@
+{
+    "compilerOptions": {
+        "target": "ES2015",
+        "module": "ES2020",
+        "strict": true,
+        "esModuleInterop": false,
+        "forceConsistentCasingInFileNames": true,
+        "outDir": "./lib/esm",
+        "declaration": true,
+        "noImplicitAny": false,
+    },
+    "include": [
+        "./"
+    ]
+}
