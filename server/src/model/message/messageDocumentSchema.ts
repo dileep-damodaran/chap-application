@@ -1,18 +1,18 @@
-import { IMessageDocument } from "./messageDocument";
+import { IMessageDocument } from "./messageDocument.js";
+import { ObjectId } from "mongodb";
 import * as mongoose from "mongoose";
 
 let messageSchema = new mongoose.Schema({
-    room_id: { type: String, required: true, unique: false },
-    user_id: { type: String, required: true, unique: false },
-    user_name: { type: String, required: true, unique: false },
-    message: { type: String, required: true, unique: false },
+    chat_room_id: { type: ObjectId, required: true, unique: false },
+    messages: { type: Array, required: true, unique: false, default: [] }
 
 },
     {
         timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' }
     });
 
-messageSchema.index({ room_id: 1 });
+messageSchema.index({ chat_room_id: 1 });
 export let Message: mongoose.Model<IMessageDocument> = mongoose.model<IMessageDocument>("message", messageSchema);
+
 
 

@@ -1,5 +1,5 @@
-import { Room } from "../../model/room/roomDocumentSchema";
-import { IRoomDocument } from "../../model/room/roomDocument";
+import { Room } from "../../model/room/roomDocumentSchema.js";
+import { IRoomDocument } from "../../model/room/roomDocument.js";
 
 export class RoomService {
 
@@ -14,14 +14,23 @@ export class RoomService {
         })
     }
 
-    public static async getRoom(socket_id: string): Promise<IRoomDocument> {
+    public static async getRoom(id: string): Promise<IRoomDocument> {
 
         return new Promise(async (resolve, reject) => {
 
-            const room = await Room.findOne({ "users.socket_id": socket_id });
+            const room = await Room.findById(id);
             if (!room) return resolve();
-
             return resolve(room);
-        })
+        });
+    }
+
+    public static async getRoomByName(name: string): Promise<IRoomDocument> {
+
+        return new Promise(async (resolve, reject) => {
+
+            const room = await Room.findOne({ name: name });
+            if (!room) return resolve();
+            return resolve(room);
+        });
     }
 }

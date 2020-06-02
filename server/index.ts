@@ -15,6 +15,8 @@ import { User } from './src/model/user/userDocumentSchema.js';
 import { Message } from './src/model/message/messageDocumentSchema.js';
 import { RoomService } from './src/services/room/room.js';
 import { UserService } from './src/services/user/user.js';
+import { ChatRoomService } from './src/services/chatRoom/chatRoom.js';
+import { MessageService } from './src/services/message/message.js';
 import { Db } from "./src/data/db.js";
 import { IRoomDocument } from './src/model/room/roomDocument.js';
 
@@ -29,41 +31,63 @@ io.on('connection', (socket: any) => {
 
         try {
 
+            let newRoom = false;
+
             const un: string = onboard_data.un ? onboard_data.un.toLowerCase() : "";
             const rn: string = onboard_data.rn ? onboard_data.rn.toLowerCase() : "";
 
-            let room: any = await Room.findOne({ name: rn });
-            let user: any = await User.findOne({ user_name: un });
-
-            user = await UserService.addUser(socket.id, un);
+            let room = await RoomService.getRoomByName(rn);
 
             if (!room) {
                 room = await RoomService.createRoom(rn);
-
-                const message = new Message();
-                message.room_id = room.id;
-                message.user_id = 'admin';
-                message.user_name = 'admin';
-                message.message = `${user.user_name} created the room`;
-                await message.save();
+                newRoom = true;
             }
 
-            const inUser = { user_name: user.user_name, socket_id: user.socket_id, activity_log: [{ joined_at: new Date(), left_at: null }] };
-            room.users = (room.users || []).concat([inUser]);
+            console.log(`room id is ${room.id} and ${room._id}`);
+            let chatRoom = await ChatRoomService.getChatRoom(room.id);
 
-            room.markModified("users");
-            await room.save();
+            console.log('getChatRoom passed ');
+            console.log(chatRoom);
+
+            if (!chatRoom) {
+                chatRoom = await ChatRoomService.createChatRoom(room.id);
+                console.log('createChatRoom passed ');
+                console.log(chatRoom);
+            }
+
+            let user = await UserService.getUserByName(un);
+
+            console.log('getUserByName passed ');
+            console.log(user);
+
+            if (!user) {
+                user = await UserService.addUser(un);
+                console.log('addUser passed ');
+                console.log(user);
+            }
 
 
-            const allMessages = await Message.find({ room_id: room.id }).sort({ created_at: 1.0 });
+            console.log(`user is `);
+            console.log(user);
+            chatRoom = await ChatRoomService.addUserInChatRoom(room.id, user.id, socket.id);
 
-            const oldThreads = allMessages.map((thread) => {
 
-                return {
-                    user: thread.user_name,
-                    text: thread.message
-                }
-            });
+            socket.join(chatRoom.id);
+
+            if (newRoom) {
+                await MessageService.sendMessage(chatRoom.id, `${user.user_name} created the room`, user.id, socket.io);
+            }
+
+            const allMessages = await MessageService.getMessages(chatRoom.id);
+
+
+            let oldThreads: any[] = [];
+            for (let thread of allMessages.messages) {
+
+                const sender = await UserService.getUser(thread.user_id);
+
+                oldThreads.push({ user: sender.user_name, text: thread.message });
+            }
 
             socket.emit('admin-message', oldThreads);
 
@@ -73,73 +97,73 @@ io.on('connection', (socket: any) => {
             });
 
 
-            socket.join(room.id);
+            // socket.join(room.id);
             callback();
         }
         catch (err) {
-            console.log('*****************Error in join**********************');
+            console.log('*****************Error in join*********************');
             console.log(err);
         }
 
     });
 
-    socket.on('send-message', async (socket_id: string, text: string, callback: any) => {
+    // socket.on('send-message', async (socket_id: string, text: string, callback: any) => {
 
-        try {
+    //     try {
 
-            const user = await UserService.getUser(socket_id);
-            const room = await RoomService.getRoom(socket_id);
+    //         const user = await UserService.getUser(socket_id);
+    //         const room = await RoomService.getRoom(socket_id);
 
-            const message = new Message();
-            message.room_id = room.id;
-            message.user_id = user.id;
-            message.user_name = user.user_name;
-            message.message = text
-            await message.save();
+    //         const message = new Message();
+    //         message.room_id = room.id;
+    //         message.user_id = user.id;
+    //         message.user_name = user.user_name;
+    //         message.message = text
+    //         await message.save();
 
-            io.to(room.id).emit('admin-message', {
-                user: user.user_name,
-                text: text
-            });
+    //         io.to(room.id).emit('admin-message', {
+    //             user: user.user_name,
+    //             text: text
+    //         });
 
-            callback();
-        }
+    //         callback();
+    //     }
 
-        catch (err) {
-            console.log('*****************Error in sending message*********************');
-            console.log(err);
-        }
-    });
+    //     catch (err) {
+    //         console.log('*****************Error in sending message*********************');
+    //         console.log(err);
+    //     }
+    // });
 
 
-    socket.on('disconnect', async (obj: any) => {
+    // socket.on('disconnect', async (obj: any) => {
 
-        try {
+    //     try {
 
-            const room = await RoomService.getRoom(socket.id);
-            const user = await UserService.getUser(socket.id);
+    //         const room = await RoomService.getRoom(socket.id);
+    //         const user = await UserService.getUser(socket.id);
 
-            if (room && user) {
+    //         if (room && user) {
 
-                socket.broadcast.to(room.id).emit('admin-message', {
-                    user: 'admin',
-                    text: `${user.user_name} left the room`
-                });
+    //             socket.broadcast.to(room.id).emit('admin-message', {
+    //                 user: 'admin',
+    //                 text: `${user.user_name} left the room`
+    //             });
 
-                const message = new Message();
-                message.room_id = room.id;
-                message.user_id = 'admin';
-                message.user_name = 'admin';
-                message.message = `${user.user_name} left the room`
-                await message.save();
-            }
-        }
+    //             const message = new Message();
+    //             message.room_id = room.id;
+    //             message.user_id = 'admin';
+    //             message.user_name = 'admin';
+    //             message.message = `${user.user_name} left the room`
+    //             await message.save();
+    //         }
+    //     }
 
-        catch (err) {
-            console.log('*****************Error while disconnecting*********************');
-            console.log(err);
-        }
-    });
+    //     catch (err) {
+    //         console.log('*****************Error while disconnecting*********************');
+    //         console.log(err);
+    //     }
+    // });
 })
 
 
